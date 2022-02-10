@@ -1,45 +1,38 @@
-import time
-import os
+# 持久化进度记录器
 
+import dbm
+import atexit
+import sys
+
+db = dbm.open('.progressing.catch','c')
+atexit.register(db.close)
 
 class Progressing():
-    def __init__(self,file=f'{__file__}.progressing',total=0):
-        self.now = 0
+    def __init__(self,key=sys.argv[0],total=0):
+        i = db.get(key,0)
+        self.now = int(i)
         self.total = total
-        self.file = file
-        try:
-            self.fd = open(file,'r+')
-            self.now = int(self.fd.read())
-        except FileNotFoundError as e:
-            self.fd = open(file,'w+')
+        self.key = key
 
-    
     def update(self,i):
         self.now = i
-        self.fd.seek(0)
-        self.fd.write(str(i))
-        self.fd.flush()
-
+        db[self.key] = str(i)
+    
     def tick(self):
         self.update(self.now+1)
     
-    def done(self):
-        self.fd.close()
-        os.remove(self.file)
-        
-    def __del__(self):
-        self.fd.close()
-
-def main():
-    p = Progressing()
-    for i in range(100):
-        if i < p.now:
-            continue
-        p.tick()
-        print(i)
-        time.sleep(0.1)
-
-    p.done()
+    def clear(self):
+        del db[self.key]
 
 
-main()
+def task_queue(func,iterable,key=None,once=False):
+    key = key or sys.argv[0]+func.__name__
+    p = Progressing(key)
+    i = 0
+    for args in iterable:
+        if  p.now == i: 
+            func(*args)
+            p.tick()
+        i = i+1
+    if not once:
+        p.clear()

@@ -1,21 +1,14 @@
 
-from progressing import Progressing
+from progressing import Progressing,task_queue
 import time
 def task(param):
     print('task: ',param)
     time.sleep(0.1)
 
 with open('params.txt') as f: 
-    p = Progressing()
-    i = 0
-    for line in f:
-        if  p.now == i:
-            if line[-1] == '\n':
-                param = line[:-1]
-            else:
-                param = line
-            
-            task(param)
-            p.tick()
-        i = i+1
-    p.done()
+    params = []
+    for line in f.read().split('\n'):
+        params.append([line])
+
+    task_queue(task,params)
+
